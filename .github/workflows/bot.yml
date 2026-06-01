@@ -1,0 +1,47 @@
+name: Portfolio Bot
+
+# Force GitHub Actions cron scheduler to refresh
+on:
+  schedule:
+    - cron: '45 3 * * 1-5'   # 9:15 AM IST - Market Open
+    - cron: '45 4 * * 1-5'   # 10:15 AM IST - One hour after open
+    - cron: '0 10 * * 1-5'   # 3:30 PM IST - Market Close
+  workflow_dispatch:
+
+jobs:
+  run-bot:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.10'
+
+      - run: pip install -r requirements.txt
+
+      - run: |
+          SESSION=""
+
+          case "${GITHUB_SCHEDULE:-}" in
+            "45 3 * * 1-5")
+              SESSION="open"
+              ;;
+            "45 4 * * 1-5")
+              SESSION="open_plus_1h"
+              ;;
+            "0 10 * * 1-5")
+              SESSION="close"
+              ;;
+          esac
+
+          if [ -n "$SESSION" ]; then
+            python main.py --session "$SESSION"
+          else
+            python main.py
+          fi
+        env:
+          TELEGRAM_TOKEN: ${{ secrets.TELEGRAM_TOKEN }}
+          CHAT_ID: ${{ secrets.CHAT_ID }}
+          GITHUB_SCHEDULE: ${{ github.event.schedule }}
